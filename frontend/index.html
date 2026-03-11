@@ -10,11 +10,28 @@
     <p>AI Ergonomics Assistant</p>
 
     <button id="startBtn">Start Posture Detection</button>
-
+    <div style="position: relative">
+      <video id="webcam" autoplay playsinline width="640" height="480"></video>
+      <canvas
+        id="output"
+        width="640"
+        height="480"
+        style="position: absolute; left: 0; top: 0"
+      ></canvas>
+    </div>
     <video id="webcam" autoplay></video>
 
     <p id="status">Waiting to start...</p>
-
+    <h2 id="score">Posture Score: --</h2>
+    <h3 id="points">Points: 0</h3>
+    <h3 id="streak">Streak: 0</h3>
+    <h3 id="progress">Progress: 0/120</h3>
+    <h3>AI Coach</h3>
+    <p id="feedback">Waiting for posture analysis...</p>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"></script> -->
     <script src="app.js"></script>
   </body>
 </html>
