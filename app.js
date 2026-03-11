@@ -10,12 +10,10 @@ let poseLandmarker = undefined;
 let runningMode = "IMAGE";
 let enableWebcamButton;
 let webcamRunning = false;
+let rafId = null;
 const videoHeight = "360px";
 const videoWidth = "480px";
 
-// Before we can use PoseLandmarker class we must wait for it to finish
-// loading. Machine Learning models can be large and take a moment to
-// get everything needed to run.
 const createPoseLandmarker = async () => {
   const vision = await FilesetResolver.forVisionTasks(
     "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm",
@@ -69,6 +67,13 @@ async function handleClick(event) {
   // We can call poseLandmarker.detect as many times as we like with
   // different image data each time. The result is returned in a callback.
   poseLandmarker.detect(event.target, (result) => {
+    console.log("image detect result:", {
+      poses: result.landmarks ? result.landmarks.length : 0,
+      sample:
+        result.landmarks && result.landmarks[0]
+          ? result.landmarks[0].slice(0, 5)
+          : null,
+    });
     const canvas = document.createElement("canvas");
     canvas.setAttribute("class", "canvas");
     canvas.setAttribute("width", event.target.naturalWidth + "px");
@@ -120,7 +125,7 @@ if (hasGetUserMedia()) {
 }
 
 // Enable the live webcam view and start detection.
-function enableCam(event) {
+async function enableCam(event) {
   if (!poseLandmarker) {
     console.log("Wait! poseLandmaker not loaded yet.");
     return;
@@ -130,10 +135,48 @@ function enableCam(event) {
 
   if (webcamRunning === true) {
     webcamRunning = false;
-    enableWebcamButton.innerText = "ENABLE PREDICTIONS";
+    enableWebcamButton.innerText = "Enable Webcam";
+    // Stop all media tracks and clear the video source
+    if (video && video.srcObject) {
+      try {
+        const tracks = video.srcObject.getTracks();
+        tracks.forEach((t) => {
+          console.log("Stopping track", t.kind);
+          t.stop();
+        });
+      } catch (err) {
+        console.error("Error stopping tracks:", err);
+      }
+      try {
+        video.pause();
+      } catch (e) {}
+      try {
+        video.removeAttribute("src");
+      } catch (e) {}
+      video.srcObject = null;
+      try {
+        video.load();
+      } catch (e) {}
+      // clear the drawing canvas
+      clearCanvas();
+    }
+    video.removeEventListener("loadeddata", predictWebcam);
+    // cancel any pending animation frame
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    // switch back to IMAGE mode to stop internal video processing
+    try {
+      runningMode = "IMAGE";
+      await poseLandmarker.setOptions({ runningMode: "IMAGE" });
+      console.log("setOptions to IMAGE OK");
+    } catch (e) {
+      console.warn("Failed to set runningMode to IMAGE:", e);
+    }
   } else {
     webcamRunning = true;
-    enableWebcamButton.innerText = "DISABLE PREDICTIONS";
+    enableWebcamButton.innerText = "Disable Webcam";
   }
 
   // getUsermedia parameters.
@@ -141,19 +184,26 @@ function enableCam(event) {
     video: true,
   };
 
-  // Activate the webcam stream.
-  navigator.mediaDevices
-    .getUserMedia(constraints)
-    .then((stream) => {
-      console.log("getUserMedia resolved, tracks:", stream.getTracks().length);
-      video.srcObject = stream;
-      // Ensure we don't add duplicate listeners
-      video.removeEventListener("loadeddata", predictWebcam);
-      video.addEventListener("loadeddata", predictWebcam);
-    })
-    .catch((err) => {
-      console.error("getUserMedia error:", err);
-    });
+  // Only request camera when we just enabled the webcam.
+  if (webcamRunning) {
+    navigator.mediaDevices
+      .getUserMedia(constraints)
+      .then((stream) => {
+        console.log(
+          "getUserMedia resolved, tracks:",
+          stream.getTracks().length,
+        );
+        video.srcObject = stream;
+        // Ensure we don't add duplicate listeners
+        video.removeEventListener("loadeddata", predictWebcam);
+        video.addEventListener("loadeddata", predictWebcam);
+      })
+      .catch((err) => {
+        console.error("getUserMedia error:", err);
+      });
+  } else {
+    console.log("webcam not started because webcamRunning is false");
+  }
 }
 
 let lastVideoTime = -1;
@@ -187,6 +237,18 @@ async function predictWebcam() {
     lastVideoTime = video.currentTime;
     try {
       poseLandmarker.detectForVideo(video, startTimeMs, (result) => {
+        // debug: log pose detection summary
+        try {
+          console.log("video detect result:", {
+            poses: result.landmarks ? result.landmarks.length : 0,
+            sample:
+              result.landmarks && result.landmarks[0]
+                ? result.landmarks[0].slice(0, 5)
+                : null,
+          });
+        } catch (e) {
+          console.warn("Error logging detectForVideo result", e);
+        }
         try {
           canvasCtx.save();
           canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
@@ -214,6 +276,36 @@ async function predictWebcam() {
 
   // Call this function again to keep predicting when the browser is ready.
   if (webcamRunning === true) {
-    window.requestAnimationFrame(predictWebcam);
+    // ensure canvas matches video resolution for crisp drawing
+    try {
+      const dpr = window.devicePixelRatio || 1;
+      const vw = video.videoWidth || canvasElement.width;
+      const vh = video.videoHeight || canvasElement.height;
+      if (vw && vh) {
+        const pixelW = Math.max(1, Math.floor(vw * dpr));
+        const pixelH = Math.max(1, Math.floor(vh * dpr));
+        if (canvasElement.width !== pixelW || canvasElement.height !== pixelH) {
+          canvasElement.width = pixelW;
+          canvasElement.height = pixelH;
+          canvasElement.style.width = vw + "px";
+          canvasElement.style.height = vh + "px";
+          canvasCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+    rafId = window.requestAnimationFrame(predictWebcam);
+  } else {
+    rafId = null;
+  }
+}
+
+// Clear canvas when stopping
+function clearCanvas() {
+  try {
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  } catch (e) {
+    // ignore
   }
 }

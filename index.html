@@ -1,45 +1,186 @@
-
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>PostureCoach - Pose detection</title>
-    <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
-    <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
+
+    <title>PostureCoach | AI Pose Detection</title>
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Poppins", sans-serif;
+      }
+
+      body {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        color: white;
+        padding: 40px;
+      }
+
+      /* Header */
+
+      header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      header h1 {
+        font-size: 38px;
+        font-weight: 600;
+        letter-spacing: 1px;
+      }
+
+      header p {
+        opacity: 0.85;
+        margin-top: 10px;
+      }
+
+      /* Main container */
+
+      .container {
+        width: 95%;
+        max-width: 1200px;
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(12px);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+      }
+
+      /* Section titles */
+
+      h2 {
+        margin-bottom: 15px;
+        font-weight: 500;
+      }
+
+      /* Image detection grid */
+
+      .image-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 40px;
+      }
+
+      .image-grid img {
+        width: 100%;
+        border-radius: 15px;
+        cursor: pointer;
+        transition: 0.3s;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+      }
+
+      .image-grid img:hover {
+        transform: scale(1.05);
+      }
+
+      /* Webcam section */
+
+      .video-container {
+        text-align: center;
+      }
+
+      #webcamButton {
+        background: #00e5ff;
+        border: none;
+        padding: 12px 28px;
+        border-radius: 30px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: 0.3s;
+        color: #222;
+        margin-bottom: 20px;
+      }
+
+      #webcamButton:hover {
+        transform: scale(1.05);
+        background: #00c3d8;
+      }
+
+      .video-wrapper {
+        position: relative;
+        display: inline-block;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        width: 100%;
+        max-width: 360px; /* smaller webcam preview */
+        aspect-ratio: 16/9;
+        background: #000;
+      }
+
+      video,
+      canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      video {
+        object-fit: cover;
+        filter: saturate(1.05) contrast(1.02);
+      }
+
+      canvas {
+        pointer-events: none;
+      }
+
+      footer {
+        margin-top: 25px;
+        font-size: 14px;
+        opacity: 0.8;
+      }
+    </style>
   </head>
+
   <body>
-  <h1>Pose detection using the MediaPipe PoseLandmarker task</h1>
+    <header>
+      <h1>PostureCoach AI</h1>
+      <p>Real-time posture detection using MediaPipe Pose</p>
+    </header>
 
-  <section id="demos" class="invisible">
-    <h2>Demo: Detecting Images</h2>
-    <p><b>Click on an image below</b> to see the key landmarks of the body.</p>
+    <div class="container">
+      <section id="demos">
+        <h2>Live Webcam Pose Detection</h2>
+        <p style="margin-bottom: 20px">
+          Enable webcam and stand in front of the camera.
+        </p>
 
-    <div class="detectOnClick">
-      <!-- source: https://pixabay.com/photos/woman-asia-beautiful-cambodia-1822514/ -->
-      <img src="https://assets.codepen.io/9177687/woman-ge0f199f92_640.jpg" width="100%" crossorigin="anonymous" title="Click to get detection!" />
+        <div class="video-container">
+          <button id="webcamButton">Enable Webcam</button>
+
+          <div class="video-wrapper">
+            <video id="webcam" autoplay playsinline muted></video>
+            <canvas
+              class="output_canvas canvas"
+              id="output_canvas"
+              width="1280"
+              height="720"
+            ></canvas>
+          </div>
+        </div>
+      </section>
     </div>
-    <div class="detectOnClick">
-      <!-- source: https://pixabay.com/photos/woman-relaxation-portrait-3053489/ -->
-      <img src="https://assets.codepen.io/9177687/woman-g1af8d3deb_640.jpg" width="100%" crossorigin="anonymous" title="Click to get detection!" />
-    </div>
 
-    <h2>Demo: Webcam continuous pose landmarks detection</h2>
-    <p>Stand in front of your webcam to get real-time pose landmarker detection.</br>Click <b>enable webcam</b> below and grant access to the webcam if prompted.</p>
+    <footer>PostureCoach MVP • AI powered posture analysis</footer>
 
-    <div id="liveView" class="videoView">
-      <button id="webcamButton" class="mdc-button mdc-button--raised">
-        <span class="mdc-button__ripple"></span>
-        <span class="mdc-button__label">ENABLE WEBCAM</span>
-      </button>
-      <div style="position: relative;">
-        <video id="webcam" style="width: 1280px; height: 720px; position: absolute; left: 0; top: 0;" autoplay playsinline></video>
-        <canvas class="output_canvas canvas" id="output_canvas" width="1280" height="720" style="position: absolute; left: 0px; top: 0px;"></canvas>
-      </div>
-    </div>
-  </section>
-
-  <!-- Load app as an ES module so imports in app.js work correctly -->
-  <script type="module" src="app.js"></script>
+    <script type="module" src="app.js"></script>
   </body>
 </html>
