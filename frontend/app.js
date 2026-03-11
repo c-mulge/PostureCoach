@@ -142,18 +142,20 @@ startBtn.onclick = async () => {
 };
 
 async function generateFeedback(issue) {
-  const prompt = "Give a short ergonomic posture correction for: " + issue;
+  const prompt = `
+You are an ergonomic posture coach.
+Give a short correction for this posture issue:
+${issue}
+`;
 
   try {
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyA1xiDBKFB2EwB2JIkGwKywh3U4N7BSYVc",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=AIzaSyANDF-puK_7910nsnVSrNwUmmOc4e5cbAQ",
       {
         method: "POST",
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
           contents: [
             {
@@ -166,10 +168,16 @@ async function generateFeedback(issue) {
 
     const data = await response.json();
 
-    const advice = data.candidates[0].content.parts[0].text;
+    console.log(data);
 
-    feedbackText.innerText = advice;
+    if (data.candidates && data.candidates.length > 0) {
+      feedbackText.innerText = data.candidates[0].content.parts[0].text;
+    } else {
+      feedbackText.innerText = "AI feedback unavailable.";
+    }
   } catch (error) {
+    console.error(error);
     feedbackText.innerText = "AI feedback unavailable.";
   }
 }
+generateFeedback("leaning forward posture");
